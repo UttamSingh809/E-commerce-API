@@ -1,0 +1,29 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+
+const app = express();
+
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+app.use(morgan('dev'));
+
+const authRoutes = require('./routes/auth.routes')
+
+app.use('/auth',authRoutes)
+
+app.get('/health', (req, res) => {
+    res.json({ status: 'OK', message: 'Server is running' });
+});
+
+/* app.use((err, req, res, next) => {
+    res.status(500).json({ success: false, message: err.message });
+}); */
+
+app.use((req, res) => {
+    res.status(404).json({ success: false, message: 'Route not found' });
+});
+
+module.exports = app;
