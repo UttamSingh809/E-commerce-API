@@ -3,15 +3,31 @@ const bcrypt= require('bcrypt')
 
 const userSchema = new mongoose.Schema({
     name: { 
-        type: String, required: true 
+        type: String,
+        required: [true, 'Name is required'],
+        trim: true,
+        minlength: [2, 'Name must be at least 2 characters'],
+        maxlength: [50, 'Name cannot exceed 50 characters']
     },
     email: { 
-        type: String, required: true, unique: true 
+        type: String,
+        required: [true, 'Email is required'],
+        unique: true,
+        lowercase: true,
+        trim: true,
+        match: [/^\S+@\S+\.\S+$/, 'Please provide a valid email']
     },
     password: { 
-        type: String, hashed: true, required: true 
+        type: String,
+        required: [true, 'Password is required'],
+        minlength: [6, 'Password must be at least 6 characters'],
+        select: false 
     },
-    role: ['customer', 'admin', 'super-admin'],
+    role: {
+        type:String,
+        enum: ['customer', 'admin', 'super-admin'],
+        default: 'customer'
+    },
     profile: {
         phone: { 
             type: String 
@@ -68,7 +84,7 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 };
 
 userSchema.methods.isAdmin = function () {
-    return this.role === 'admin' || this.role === 'super_admin';
+    return this.role === 'admin' || this.role === 'super-admin';
 };
 
 userSchema.methods.getFullName = function () {
