@@ -11,16 +11,18 @@ app.use(express.json());
 app.use(morgan('dev'));
 
 const authRoutes = require('./routes/auth.routes')
+const categoryRoutes=require('./routes/category.routes')
 
 app.use('/auth',authRoutes)
+app.use('/categories',categoryRoutes)
 
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'Server is running' });
 });
 
-/* app.use((err, req, res, next) => {
+app.use((err, req, res, next) => {
     res.status(500).json({ success: false, message: err.message });
-}); */
+});
 
 app.use((req, res) => {
     res.status(404).json({ success: false, message: 'Route not found' });

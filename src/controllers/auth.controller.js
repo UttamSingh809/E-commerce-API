@@ -44,7 +44,7 @@ async function login(req,res){
     try{
         const { email, password } = req.body
 
-        const user=await User.findOne({email})
+        const user=await User.findOne({email}).select('+password')
         if(!user){
             res.status(401).json({
                 status:false,
@@ -63,6 +63,7 @@ async function login(req,res){
         const token=generateToken(user._id)
         res.json({
             success:true,
+            token,
             user:{
                 id:user._id,
                 name:user.name,
