@@ -1,5 +1,4 @@
 const mongoose = require('mongoose')
-
 const cartSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -29,6 +28,30 @@ const cartSchema = new mongoose.Schema({
             min: [0, 'Total cannot be negative']
         }
     }],
+    subtotal: {
+        type: Number,
+        default: 0,
+        min: [0, 'Subtotal cannot be negative']
+    },
+    coupons: [{
+        code: {
+            type: String,
+            trim: true
+        },
+        discount: {
+            type: Number,
+            default: 0
+        },
+        type: {
+            type: String,
+            enum: ['percentage', 'fixed']
+        }
+    }],
+    totalDiscount: {
+        type: Number,
+        default: 0,
+        min: [0, 'Discount cannot be negative']
+    },
     total: {
         type: Number,
         default: 0,
@@ -47,7 +70,9 @@ cartSchema.index({ user: 1 }, { unique: true })
 cartSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
 cartSchema.methods.calculateTotals = function () {
-    this.total = this.items.reduce((sum, item) => sum + item.total, 0);
+    this.subtotal = this.items.reduce((sum, item) => sum + item.total, 0) 
+    this.totalDiscount = this.coupons.reduce((sum, coupon) => sum + coupon.discount, 0) 
+    this.total = this.subtotal - this.totalDiscount 
     if (this.total < 0) this.total = 0
     return this
 }
@@ -78,11 +103,11 @@ cartSchema.methods.addItem = function (productId, quantity = 1, price) {
 cartSchema.methods.removeItem = function (productId) {
     this.items = this.items.filter(item =>
         item.product.toString() !== productId.toString()
-    );
+    ) 
 
-    this.calculateTotals();
-    return this;
-};
+    this.calculateTotals() 
+    return this 
+} 
 
 cartSchema.methods.updateItemQuantity = function (productId, quantity) {
     const item = this.items.find(item =>
@@ -101,17 +126,54 @@ cartSchema.methods.updateItemQuantity = function (productId, quantity) {
     item.total = item.quantity * item.price
 
     this.calculateTotals()
-}
-
-cartSchema.methods.clearCart = function () {
-    this.items = [],
-        this.total = 0
     return this
 }
 
+cartSchema.methods.clearCart = function () {
+    this.items = []
+    this.coupons = []
+    this.subtotal = 0
+    this.totalDiscount = 0 
+    this.total = 0
+    return this
+}
+
+cartSchema.methods.applyCoupon = function (coupon) {
+    const existingCoupon = this.coupons.find(c => c.code === coupon.code) 
+    if (existingCoupon) {
+        throw new Error('Coupon already applied') 
+    }
+
+    let discount = 0 
+    if (coupon.type === 'percentage') {
+        discount = (this.subtotal * coupon.value) / 100 
+        if (coupon.maxDiscount && discount > coupon.maxDiscount) {
+            discount = coupon.maxDiscount 
+        }
+    } else if (coupon.type === 'fixed') {
+        discount = coupon.value 
+        if (discount > this.subtotal) {
+            discount = this.subtotal 
+        }
+    }
+    this.coupons.push({
+        code: coupon.code,
+        discount: discount,
+        type: coupon.type
+    }) 
+    this.calculateTotals() 
+    return this 
+} 
+
+cartSchema.methods.removeCoupon = function (couponCode) {
+    this.coupons = this.coupons.filter(c => c.code !== couponCode) 
+    this.calculateTotals() 
+    return this 
+} 
+
 cartSchema.virtual('isEmpty').get(function () {
     return this.items.length === 0
-});
+}) 
 
 cartSchema.virtual('itemCount').get(function () {
     return this.items.reduce((sum, item) => sum + item.quantity, 0)
@@ -122,16 +184,17 @@ cartSchema.virtual('uniqueItems').get(function () {
 })
 
 cartSchema.statics.getOrCreateCart = async function (userId) {
-    let cart = await this.findOne({user: userId })
-
+    let cart = await this.findOne({ user: userId })
     if (!cart) {
         cart = await this.create({
             user: userId,
             items: [],
+            coupons: [],
+            subtotal: 0,
+            totalDiscount: 0,
             total: 0
         })
     }
-
     return cart
 }
 
