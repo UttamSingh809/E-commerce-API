@@ -10,6 +10,9 @@ async function getCart(req, res) {
             cart = await Cart.create({
                 user: req.user.id,
                 items: [],
+                coupons: [],
+                subtotal: 0,
+                totalDiscount: 0,
                 total: 0
             })
         }
@@ -19,10 +22,13 @@ async function getCart(req, res) {
             cart: {
                 id: cart._id,
                 items: cart.items,
+                subtotal: cart.subtotal,
+                totalDiscount: cart.totalDiscount,
                 total: cart.total,
                 itemCount: cart.itemCount,
                 uniqueItems: cart.uniqueItems,
-                isEmpty: cart.isEmpty
+                isEmpty: cart.isEmpty,
+                coupons: cart.coupons
             }
         })
     }
@@ -72,6 +78,9 @@ async function addToCart(req, res) {
             cart = await Cart.create({
                 user: req.user.id,
                 items: [],
+                coupons: [],
+                subtotal: 0,
+                totalDiscount: 0,
                 total: 0
             })
         }
@@ -101,10 +110,13 @@ async function addToCart(req, res) {
             cart: {
                 id: cart._id,
                 items: cart.items,
-                itemCount: cart.itemCount,
+                subtotal: cart.subtotal,
+                totalDiscount: cart.totalDiscount,
                 total: cart.total,
+                itemCount: cart.itemCount,
                 uniqueItems: cart.uniqueItems,
-                isEmpty: cart.isEmpty
+                isEmpty: cart.isEmpty,
+                coupons: cart.coupons
             }
         })
     }
@@ -206,13 +218,15 @@ async function removeFromCart(req, res) {
 
         res.json({
             success: true,
-            message: 'Items removed from cart',
+            message: 'Item removed from cart',
             cart: {
-                id: cart._id,
-                items: cart.items,
+                subtotal: cart.subtotal,
+                totalDiscount: cart.totalDiscount,
                 total: cart.total,
-                itemCount: cart.uniqueItems,
-                isEmpty: cart.isEmpty
+                itemCount: cart.itemCount,
+                uniqueItems: cart.uniqueItems,
+                isEmpty: cart.isEmpty,
+                coupons: cart.coupons
             }
         })
     }
@@ -242,9 +256,13 @@ async function clearCart(req,res) {
             cart: {
                 id: cart._id,
                 items: [],
+                subtotal: 0,
+                totalDiscount: 0,
                 total: 0,
                 itemCount: 0,
-                isEmpty: true
+                uniqueItems: 0,
+                isEmpty: true,
+                coupons: []
             }
         })
     }
@@ -256,11 +274,82 @@ async function clearCart(req,res) {
     }
 }
 
-async function applyCoupon(req,res) {
+async function applyCoupon(req, res) {
     try {
+        const { couponCode } = req.body
 
+        if (!couponCode) {
+            return res.status(400).json({
+                success: false,
+                message: 'Coupon code is required'
+            })
+        }
+
+        const cart = await Cart.findOne({ user: req.user.id })
+        if (!cart) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cart not found'
+            })
+        }
+
+        if (cart.items.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cart is empty. Add items before applying coupon'
+            })
+        }
+
+        const existingCoupon = cart.coupons.find(c => c.code === couponCode)
+        if (existingCoupon) {
+            return res.status(400).json({
+                success: false,
+                message: 'Coupon already applied'
+            })
+        }
+
+        //Using dummy coupons
+        const validCoupons = {
+            'SAVE10': { type: 'percentage', value: 10, maxDiscount: 50 },
+            'SAVE20': { type: 'percentage', value: 20, maxDiscount: 100 },
+            'FLAT50': { type: 'fixed', value: 50 }
+        }
+
+        const coupon = validCoupons[couponCode.toUpperCase()]
+        if (!coupon) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid coupon code'
+            })
+        }
+
+        cart.applyCoupon({
+            code: couponCode.toUpperCase(),
+            type: coupon.type,
+            value: coupon.value,
+            maxDiscount: coupon.maxDiscount
+        })
+
+        await cart.save()
+
+        res.json({
+            success: true,
+            message: 'Coupon applied successfully',
+            cart: {
+                id: cart._id,
+                items: cart.items,
+                subtotal: cart.subtotal,
+                totalDiscount: cart.totalDiscount,
+                total: cart.total,
+                itemCount: cart.itemCount,
+                uniqueItems: cart.uniqueItems,
+                isEmpty: cart.isEmpty,
+                coupons: cart.coupons
+            }
+        })
     }
     catch (err) {
+        console.log(err)
         res.status(500).json({
             success: false,
             message: err.message
@@ -270,7 +359,34 @@ async function applyCoupon(req,res) {
 
 async function removeCoupon(req,res) {
     try {
+        const { couponCode } = req.params
 
+        const cart = await Cart.findOne({ user: req.user.id })
+        if (!cart) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cart not found'
+            })
+        }
+
+        cart.removeCoupon(couponCode)
+        await cart.save()
+
+        res.json({
+            success: true,
+            message: 'Coupon removed successfully',
+            cart: {
+                id: cart._id,
+                items: cart.items,
+                subtotal: cart.subtotal,
+                totalDiscount: cart.totalDiscount,
+                total: cart.total,
+                itemCount: cart.itemCount,
+                uniqueItems: cart.uniqueItems,
+                isEmpty: cart.isEmpty,
+                coupons: cart.coupons
+            }
+        })
     }
     catch (err) {
         res.status(500).json({
@@ -285,5 +401,7 @@ module.exports = {
     addToCart,
     updateCartItem,
     removeFromCart,
-    clearCart
+    clearCart,
+    applyCoupon,
+    removeCoupon
 }
