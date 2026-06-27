@@ -248,6 +248,9 @@ orderSchema.virtual('isCompleted').get(function () {
 }) 
 
 orderSchema.virtual('itemCount').get(function () {
+    if (!this.items || !Array.isArray(this.items) || this.items.length === 0) {
+        return 0
+    }
     return this.items.reduce((sum, item) => sum + item.quantity, 0) 
 }) 
 

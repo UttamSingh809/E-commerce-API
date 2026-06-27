@@ -5,8 +5,10 @@ const mongoose = require('mongoose');
 
 mongoose.connect(config.mongoUri)
     .then(() => console.log('Database connected'))
-    .catch(err => console.log('Database connection error:', err));
+    .catch(err => console.log('Database connection error:', err))
 
 app.listen(config.port,()=>{
     console.log(`Server is running on port: ${config.port}`)
+    console.log(`📚 Environment: ${config.nodeEnv}`)
+    console.log(`💳 PayPal Mode: ${config.paypal.mode}`)
 })
