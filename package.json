@@ -9,6 +9,7 @@
     "express": "^5.2.1",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.4.0",
     "mongoose": "^9.7.2",
     "morgan": "^1.11.0",
     "razorpay": "^2.9.6",
