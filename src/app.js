@@ -14,13 +14,15 @@ const authRoutes = require('./routes/auth.routes')
 const categoryRoutes=require('./routes/category.routes')
 const productRoutes=require('./routes/product.routes')
 const cartRoutes=require('./routes/cart.routes')
-const orderRoutes = require('./routes/order.routes');
+const orderRoutes = require('./routes/order.routes')
+const paymentRoutes = require('./routes/payment.routes')
 
 app.use('/auth',authRoutes)
 app.use('/categories',categoryRoutes)
 app.use('/products',productRoutes)
 app.use('/cart',cartRoutes)
-app.use('/orders', orderRoutes); 
+app.use('/orders', orderRoutes)
+app.use('/payments', paymentRoutes);
 
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'Server is running' });
